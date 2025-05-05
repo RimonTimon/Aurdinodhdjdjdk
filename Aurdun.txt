@@ -1,0 +1,141 @@
+
+j#include <Servo.h>
+
+// Motor driver pins
+const int ENA = 5;
+const int IN1 = 8;
+const int IN2 = 9;
+const int ENB = 6;
+const int IN3 = 10;
+const int IN4 = 11;
+
+// Ultrasonic sensor pins
+const int trigPin = 2;
+const int echoPin = 3;
+
+// Servo pin
+const int servoPin = 4;
+Servo myServo;
+
+// Switch pin
+const int switchPin = 12;
+
+long duration;
+int distance;
+
+void setup() {
+  Serial.begin(9600);
+
+  // Motor pins
+  pinMode(ENA, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+
+  // Ultrasonic pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // Servo
+  myServo.attach(servoPin);
+  myServo.write(90);  // face forward
+
+  // Switch pin
+  pinMode(switchPin, INPUT_PULLUP);
+}
+
+void loop() {
+  int switchState = digitalRead(switchPin);
+
+  if (switchState == LOW) { // switch ON
+    distance = readDistance();
+    Serial.print("Distance: ");
+    Serial.println(distance);
+
+    if (distance < 20) {
+      stopMotors();
+      delay(300);
+      avoidObstacle();
+    } else {
+      moveForward(200);
+    }
+  } else {
+    stopMotors(); // switch OFF
+  }
+}
+
+// Reads distance in cm
+int readDistance() {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  return duration * 0.034 / 2;
+}
+
+// Checks left and right and turns to the freer side
+void avoidObstacle() {
+  int leftDist, rightDist;
+
+  myServo.write(30);  // look left
+  delay(400);
+  leftDist = readDistance();
+
+  myServo.write(150); // look right
+  delay(400);
+  rightDist = readDistance();
+
+  myServo.write(90);  // center
+  delay(200);
+
+  if (leftDist > rightDist) {
+    turnLeft(200);
+    delay(500);
+  } else {
+    turnRight(200);
+    delay(500);
+  }
+
+  stopMotors();
+}
+
+// Motor control functions
+void moveForward(int speed) {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENA, speed);
+  analogWrite(ENB, speed);
+}
+
+void turnLeft(int speed) {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENA, speed);
+  analogWrite(ENB, speed);
+}
+
+void turnRight(int speed) {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+  analogWrite(ENA, speed);
+  analogWrite(ENB, speed);
+}
+
+void stopMotors() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, LOW);
+  analogWrite(ENA, 0);
+  analogWrite(ENB, 0);
+}
